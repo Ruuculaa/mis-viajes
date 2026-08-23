@@ -2,7 +2,7 @@ import Gallery from "@/components/Gallery";
 import { getViajes, getFotos } from "@/lib/drive";
 
 export default async function ViajePage({ params }) {
-  const { slug } = params;
+  const { slug } = await params;
   const viajes = await getViajes();
   const viaje = viajes.find((v) => v.slug === slug);
 

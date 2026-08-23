@@ -1,12 +1,13 @@
 "use client";
 import { useState } from "react";
+import Link from "next/link";
 import { useSession, signIn, signOut } from "next-auth/react";
 
 export default function Subir() {
   const { data: session, status } = useSession();
   const [nombreViaje, setNombreViaje] = useState("");
   const [archivos, setArchivos] = useState(null);
-  const [portada, setPortada] = useState(""); // nombre del archivo elegido como portada
+  const [portada, setPortada] = useState("");
   const [subiendo, setSubiendo] = useState(false);
   const [mensaje, setMensaje] = useState("");
 
@@ -14,11 +15,14 @@ export default function Subir() {
 
   if (!session) {
     return (
-      <main className="min-h-screen bg-neutral-950 text-white flex flex-col items-center justify-center gap-4">
-        <p>Inicia sesión con Google para subir fotos</p>
+      <main className="min-h-screen bg-gradient-to-br from-orange-50 via-amber-50 to-sky-100 flex flex-col items-center justify-center gap-6 px-4">
+        <p className="text-4xl">📸</p>
+        <p className="text-neutral-600 text-center">
+          Inicia sesión con Google para subir fotos
+        </p>
         <button
           onClick={() => signIn("google")}
-          className="bg-white text-black px-5 py-3 rounded-lg font-medium"
+          className="bg-neutral-800 text-white px-6 py-3 rounded-full font-medium hover:bg-neutral-700 hover:scale-105 transition-all shadow-lg"
         >
           Iniciar sesión con Google
         </button>
@@ -43,16 +47,16 @@ export default function Subir() {
       const data = await res.json();
 
       if (data.ok) {
-        setMensaje(`Subido${archivos.length > 1 ? "s" : ""}: ${archivos.length} archivo(s) a "${nombreViaje}".`);
+        setMensaje(`✅ Subido${archivos.length > 1 ? "s" : ""}: ${archivos.length} archivo(s) a "${nombreViaje}".`);
         setNombreViaje("");
         setArchivos(null);
         setPortada("");
         e.target.reset();
       } else {
-        setMensaje("Error al subir. Inténtalo de nuevo.");
+        setMensaje("⚠️ Error al subir. Inténtalo de nuevo.");
       }
     } catch {
-      setMensaje("Error de conexión. Inténtalo de nuevo.");
+      setMensaje("⚠️ Error de conexión. Inténtalo de nuevo.");
     }
 
     setSubiendo(false);
@@ -61,76 +65,121 @@ export default function Subir() {
   const listaArchivos = archivos ? Array.from(archivos) : [];
 
   return (
-    <main className="min-h-screen bg-neutral-950 text-white px-4 py-10">
+    <main className="min-h-screen bg-gradient-to-br from-orange-50 via-amber-50 to-sky-100 px-4 py-14">
       <div className="max-w-md mx-auto">
+        <Link
+          href="/"
+          className="inline-block text-sm text-neutral-500 hover:text-neutral-700 mb-4"
+        >
+          ← Volver al inicio
+        </Link>
+
         <div className="flex justify-between items-center mb-8">
-          <p className="text-sm text-neutral-400">Hola, {session.user?.name}</p>
-          <button onClick={() => signOut()} className="text-sm text-neutral-400 underline">
+          <p className="text-sm text-neutral-500">
+            Hola, <span className="font-medium text-neutral-700">{session.user?.name}</span> 👋
+          </p>
+          <button
+            onClick={() => signOut()}
+            className="text-sm text-neutral-400 hover:text-neutral-600 underline"
+          >
             Cerrar sesión
           </button>
         </div>
 
-        <h1 className="text-2xl font-semibold mb-6">Subir fotos / vídeos</h1>
+        <div className="bg-white rounded-2xl shadow-[0_10px_30px_-10px_rgba(0,0,0,0.15)] p-6">
+          <h1 className="text-2xl font-black text-center text-neutral-800 mb-1">
+            Subir recuerdos
+          </h1>
+          <p className="text-center text-neutral-400 text-sm mb-6">
+            Fotos y vídeos de tu próximo viaje ✈️
+          </p>
 
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-          <input
-            type="text"
-            placeholder="Nombre del viaje (ej: Nantes 2026)"
-            value={nombreViaje}
-            onChange={(e) => setNombreViaje(e.target.value)}
-            className="bg-neutral-900 rounded-lg px-4 py-3 outline-none"
-          />
-          <input
-            type="file"
-            multiple
-            accept="image/*,video/*"
-            onChange={(e) => {
-              setArchivos(e.target.files);
-              setPortada(""); // reset al cambiar selección
-            }}
-            className="bg-neutral-900 rounded-lg px-4 py-3 text-sm"
-          />
+          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+            <div>
+              <label className="text-xs font-medium text-neutral-500 mb-1 block">
+                Nombre del viaje
+              </label>
+              <input
+                type="text"
+                placeholder="Ej: Nantes 2026 🇫🇷"
+                value={nombreViaje}
+                onChange={(e) => setNombreViaje(e.target.value)}
+                className="w-full bg-orange-50 rounded-xl px-4 py-3 outline-none border border-transparent focus:border-orange-300 transition-colors"
+              />
+            </div>
 
-          {listaArchivos.length > 0 && (
-            <div className="bg-neutral-900 rounded-lg px-4 py-3">
-              <p className="text-sm text-neutral-400 mb-2">
-                ¿Cuál quieres de portada? (opcional)
-              </p>
-              <div className="flex flex-col gap-2 max-h-40 overflow-y-auto">
-                <label className="flex items-center gap-2 text-sm">
-                  <input
-                    type="radio"
-                    name="portada"
-                    checked={portada === ""}
-                    onChange={() => setPortada("")}
-                  />
-                  Automática (la primera que se procese)
-                </label>
-                {listaArchivos.map((archivo) => (
-                  <label key={archivo.name} className="flex items-center gap-2 text-sm">
+            <div>
+              <label className="text-xs font-medium text-neutral-500 mb-1 block">
+                Fotos y vídeos
+              </label>
+              <input
+                type="file"
+                multiple
+                accept="image/*,video/*"
+                onChange={(e) => {
+                  setArchivos(e.target.files);
+                  setPortada("");
+                }}
+                className="w-full bg-orange-50 rounded-xl px-4 py-3 text-sm border border-transparent file:mr-3 file:py-1.5 file:px-3 file:rounded-full file:border-0 file:bg-neutral-800 file:text-white file:text-xs"
+              />
+            </div>
+
+            {listaArchivos.length > 0 && (
+              <div className="bg-sky-50 rounded-xl px-4 py-3">
+                <p className="text-xs font-medium text-neutral-500 mb-2">
+                  ⭐ ¿Cuál quieres de portada? (opcional)
+                </p>
+                <div className="flex flex-col gap-1.5 max-h-36 overflow-y-auto pr-1">
+                  <label className="flex items-center gap-2 text-sm text-neutral-600">
                     <input
                       type="radio"
                       name="portada"
-                      checked={portada === archivo.name}
-                      onChange={() => setPortada(archivo.name)}
+                      checked={portada === ""}
+                      onChange={() => setPortada("")}
                     />
-                    {archivo.name}
+                    Automática (la primera que se procese)
                   </label>
-                ))}
+                  {listaArchivos.map((archivo) => (
+                    <label
+                      key={archivo.name}
+                      className="flex items-center gap-2 text-sm text-neutral-600"
+                    >
+                      <input
+                        type="radio"
+                        name="portada"
+                        checked={portada === archivo.name}
+                        onChange={() => setPortada(archivo.name)}
+                      />
+                      {archivo.name}
+                    </label>
+                  ))}
+                </div>
               </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={subiendo}
+              className="bg-neutral-800 text-white rounded-full px-4 py-3 font-medium hover:bg-neutral-700 hover:scale-[1.02] transition-all disabled:opacity-50 disabled:hover:scale-100 shadow-md mt-2"
+            >
+              {subiendo ? "Subiendo…" : "Subir"}
+            </button>
+          </form>
+
+          {mensaje && (
+            <div className="mt-4 text-center">
+              <p className="text-sm text-neutral-600">{mensaje}</p>
+              {mensaje.startsWith("✅") && (
+                <Link
+                  href="/"
+                  className="inline-block mt-3 text-sm text-white bg-neutral-800 px-5 py-2 rounded-full hover:bg-neutral-700 transition-colors"
+                >
+                  Volver al inicio
+                </Link>
+              )}
             </div>
           )}
-
-          <button
-            type="submit"
-            disabled={subiendo}
-            className="bg-white text-black rounded-lg px-4 py-3 font-medium disabled:opacity-50"
-          >
-            {subiendo ? "Subiendo..." : "Subir"}
-          </button>
-        </form>
-
-        {mensaje && <p className="mt-4 text-sm text-neutral-300">{mensaje}</p>}
+        </div>
       </div>
     </main>
   );

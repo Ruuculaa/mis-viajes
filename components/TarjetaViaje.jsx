@@ -76,6 +76,11 @@ export default function TarjetaViaje({ viaje, index }) {
       <p className="text-center text-xs text-neutral-400 mt-0.5">
         {viaje.total} {viaje.total === 1 ? "foto" : "fotos"}
       </p>
+      {session && (
+        <p className="text-center text-[11px] text-sky-500 mt-1 font-mono">
+          /{viaje.slug}
+        </p>
+      )}
     </div>
   );
 }
