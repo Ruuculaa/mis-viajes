@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { getViajes, getFotos } from "@/lib/drive";
+import TarjetaViaje from "@/components/TarjetaViaje";
 
 export default async function Home() {
   const viajes = await getViajes();
@@ -7,47 +8,41 @@ export default async function Home() {
   const viajesConPortada = await Promise.all(
     viajes.map(async (viaje) => {
       const fotos = await getFotos(viaje.id);
-      return { ...viaje, portada: fotos[0]?.thumb ?? null, total: fotos.length };
+      const portada = fotos.find((f) => f.starred) ?? fotos[0];
+      return { ...viaje, portada: portada?.thumb ?? null, total: fotos.length };
     })
   );
 
   return (
-    <main className="min-h-screen bg-neutral-950 text-white px-4 py-12">
-      <h1 className="text-4xl font-semibold text-center mb-10 tracking-tight">
-        Nuestros viajes
-      </h1>
+    <main className="min-h-screen bg-gradient-to-br from-orange-50 via-amber-50 to-sky-100 px-4 py-14">
+      <div className="max-w-4xl mx-auto">
+        <h1 className="text-5xl font-black text-center text-neutral-800 tracking-tight">
+          Nuestros viajes
+        </h1>
+        <p className="text-center text-neutral-500 mt-2 mb-14">
+          Cada recuerdo, guardado a salvo 🧡
+        </p>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 max-w-4xl mx-auto">
-        {viajesConPortada.map((viaje) => (
+        {viajesConPortada.length === 0 ? (
+          <p className="text-center text-neutral-400">
+            Aún no hay viajes por aquí. ¡Sube el primero!
+          </p>
+        ) : (
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-x-6 gap-y-14">
+            {viajesConPortada.map((viaje, i) => (
+              <TarjetaViaje key={viaje.id} viaje={viaje} index={i} />
+            ))}
+          </div>
+        )}
+
+        <div className="text-center mt-16">
           <Link
-            key={viaje.id}
-            href={`/${viaje.slug}`}
-            className="group relative aspect-[4/5] overflow-hidden rounded-2xl bg-neutral-900"
+            href="/subir"
+            className="inline-block bg-neutral-800 text-white text-sm font-medium px-6 py-3 rounded-full hover:bg-neutral-700 hover:scale-105 transition-all shadow-lg"
           >
-            {viaje.portada ? (
-              <img
-                src={viaje.portada}
-                alt=""
-                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-              />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center text-neutral-600">
-                Sin fotos aún
-              </div>
-            )}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent" />
-            <div className="absolute bottom-0 left-0 right-0 p-4">
-              <h2 className="text-xl font-medium">{viaje.nombre}</h2>
-              <p className="text-sm text-neutral-300">{viaje.total} fotos</p>
-            </div>
+            + Subir fotos nuevas
           </Link>
-        ))}
-      </div>
-
-      <div className="text-center mt-10">
-        <Link href="/subir" className="text-sm text-neutral-400 underline">
-          Subir fotos nuevas
-        </Link>
+        </div>
       </div>
     </main>
   );

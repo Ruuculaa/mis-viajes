@@ -6,6 +6,7 @@ export default function Subir() {
   const { data: session, status } = useSession();
   const [nombreViaje, setNombreViaje] = useState("");
   const [archivos, setArchivos] = useState(null);
+  const [portada, setPortada] = useState(""); // nombre del archivo elegido como portada
   const [subiendo, setSubiendo] = useState(false);
   const [mensaje, setMensaje] = useState("");
 
@@ -34,6 +35,7 @@ export default function Subir() {
 
     const formData = new FormData();
     formData.append("nombreViaje", nombreViaje);
+    formData.append("portadaNombre", portada);
     Array.from(archivos).forEach((a) => formData.append("archivos", a));
 
     try {
@@ -44,6 +46,7 @@ export default function Subir() {
         setMensaje(`Subido${archivos.length > 1 ? "s" : ""}: ${archivos.length} archivo(s) a "${nombreViaje}".`);
         setNombreViaje("");
         setArchivos(null);
+        setPortada("");
         e.target.reset();
       } else {
         setMensaje("Error al subir. Inténtalo de nuevo.");
@@ -54,6 +57,8 @@ export default function Subir() {
 
     setSubiendo(false);
   };
+
+  const listaArchivos = archivos ? Array.from(archivos) : [];
 
   return (
     <main className="min-h-screen bg-neutral-950 text-white px-4 py-10">
@@ -79,9 +84,43 @@ export default function Subir() {
             type="file"
             multiple
             accept="image/*,video/*"
-            onChange={(e) => setArchivos(e.target.files)}
+            onChange={(e) => {
+              setArchivos(e.target.files);
+              setPortada(""); // reset al cambiar selección
+            }}
             className="bg-neutral-900 rounded-lg px-4 py-3 text-sm"
           />
+
+          {listaArchivos.length > 0 && (
+            <div className="bg-neutral-900 rounded-lg px-4 py-3">
+              <p className="text-sm text-neutral-400 mb-2">
+                ¿Cuál quieres de portada? (opcional)
+              </p>
+              <div className="flex flex-col gap-2 max-h-40 overflow-y-auto">
+                <label className="flex items-center gap-2 text-sm">
+                  <input
+                    type="radio"
+                    name="portada"
+                    checked={portada === ""}
+                    onChange={() => setPortada("")}
+                  />
+                  Automática (la primera que se procese)
+                </label>
+                {listaArchivos.map((archivo) => (
+                  <label key={archivo.name} className="flex items-center gap-2 text-sm">
+                    <input
+                      type="radio"
+                      name="portada"
+                      checked={portada === archivo.name}
+                      onChange={() => setPortada(archivo.name)}
+                    />
+                    {archivo.name}
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
+
           <button
             type="submit"
             disabled={subiendo}
