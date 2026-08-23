@@ -1,13 +1,12 @@
 import Link from "next/link";
-import { viajes } from "@/lib/viajes";
-import { getFotos } from "@/lib/drive";
+import { getViajes, getFotos } from "@/lib/drive";
 
 export default async function Home() {
-  // Para cada viaje, pedimos sus fotos y usamos la primera como portada
+  const viajes = await getViajes();
+
   const viajesConPortada = await Promise.all(
     viajes.map(async (viaje) => {
-      const folderId = process.env[viaje.folderIdEnv];
-      const fotos = await getFotos(folderId);
+      const fotos = await getFotos(viaje.id);
       return { ...viaje, portada: fotos[0]?.thumb ?? null, total: fotos.length };
     })
   );
@@ -21,7 +20,7 @@ export default async function Home() {
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 max-w-4xl mx-auto">
         {viajesConPortada.map((viaje) => (
           <Link
-            key={viaje.slug}
+            key={viaje.id}
             href={`/${viaje.slug}`}
             className="group relative aspect-[4/5] overflow-hidden rounded-2xl bg-neutral-900"
           >
@@ -38,11 +37,17 @@ export default async function Home() {
             )}
             <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent" />
             <div className="absolute bottom-0 left-0 right-0 p-4">
-              <h2 className="text-xl font-medium">{viaje.titulo}</h2>
+              <h2 className="text-xl font-medium">{viaje.nombre}</h2>
               <p className="text-sm text-neutral-300">{viaje.total} fotos</p>
             </div>
           </Link>
         ))}
+      </div>
+
+      <div className="text-center mt-10">
+        <Link href="/subir" className="text-sm text-neutral-400 underline">
+          Subir fotos nuevas
+        </Link>
       </div>
     </main>
   );
