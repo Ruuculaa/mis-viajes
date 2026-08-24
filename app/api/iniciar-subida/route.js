@@ -15,11 +15,16 @@ export async function POST(req) {
     return Response.json({ error: "Faltan datos" }, { status: 400 });
   }
 
+  // Le decimos a Google desde qué web se va a subir el archivo después,
+  // para que permita la conexión directa navegador -> Google (CORS).
+  const origen = req.headers.get("origin") || new URL(req.url).origin;
+
   const uploadUrl = await iniciarSubidaResumable(
     nombreArchivo,
     mimeType,
     folderId,
-    session.accessToken
+    session.accessToken,
+    origen
   );
 
   if (!uploadUrl) {
