@@ -26,11 +26,11 @@ export async function POST(req) {
     return Response.json({ error: "Falta el nombre del viaje" }, { status: 400 });
   }
 
-  const folderId = await buscarOCrearCarpeta(nombreViaje, rootDestino, session.accessToken);
-
-  if (!folderId) {
-    return Response.json({ error: "No se pudo crear/encontrar la carpeta" }, { status: 500 });
+  try {
+    const folderId = await buscarOCrearCarpeta(nombreViaje, rootDestino, session.accessToken);
+    return Response.json({ folderId });
+  } catch (err) {
+    console.error("Error en preparar-subida:", err);
+    return Response.json({ error: `Google Drive: ${err.message}` }, { status: 500 });
   }
-
-  return Response.json({ folderId });
 }
