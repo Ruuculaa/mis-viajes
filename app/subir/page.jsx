@@ -9,6 +9,7 @@ export default function Subir() {
   const [archivos, setArchivos] = useState(null);
   const [portada, setPortada] = useState("");
   const [subiendo, setSubiendo] = useState(false);
+  const [progreso, setProgreso] = useState("");
   const [mensaje, setMensaje] = useState("");
 
   if (status === "loading") return null;
@@ -36,29 +37,83 @@ export default function Subir() {
 
     setSubiendo(true);
     setMensaje("");
-
-    const formData = new FormData();
-    formData.append("nombreViaje", nombreViaje);
-    formData.append("portadaNombre", portada);
-    Array.from(archivos).forEach((a) => formData.append("archivos", a));
+    setProgreso("Preparando carpeta…");
 
     try {
-      const res = await fetch("/api/subir", { method: "POST", body: formData });
-      const data = await res.json();
+      // 1. Crear/encontrar la carpeta del viaje (payload pequeño)
+      const prepRes = await fetch("/api/preparar-subida", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ nombreViaje }),
+      });
+      const prepData = await prepRes.json();
 
-      if (data.ok) {
-        setMensaje(`✅ Subido${archivos.length > 1 ? "s" : ""}: ${archivos.length} archivo(s) a "${nombreViaje}".`);
+      if (!prepData.folderId) {
+        setMensaje(`⚠️ ${prepData.error || "No se pudo preparar la subida."}`);
+        setSubiendo(false);
+        setProgreso("");
+        return;
+      }
+
+      const folderId = prepData.folderId;
+      const listaArchivos = Array.from(archivos);
+      let portadaId = null;
+      let subidos = 0;
+
+      for (let i = 0; i < listaArchivos.length; i++) {
+        const archivo = listaArchivos[i];
+        setProgreso(`Subiendo ${i + 1} de ${listaArchivos.length}…`);
+
+        // 2. Pedir a Google la URL de subida para ESTE archivo
+        const initRes = await fetch("/api/iniciar-subida", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            nombreArchivo: archivo.name,
+            mimeType: archivo.type,
+            folderId,
+          }),
+        });
+        const initData = await initRes.json();
+        if (!initData.uploadUrl) continue;
+
+        // 3. Subir el archivo DIRECTAMENTE a Google, sin pasar por nuestro servidor
+        const subidaRes = await fetch(initData.uploadUrl, {
+          method: "PUT",
+          headers: { "Content-Type": archivo.type || "application/octet-stream" },
+          body: archivo,
+        });
+        const subidaData = await subidaRes.json();
+
+        if (subidaData.id) {
+          subidos++;
+          if (portada === archivo.name) portadaId = subidaData.id;
+        }
+      }
+
+      // 4. Marcar portada si se eligió
+      if (portadaId) {
+        await fetch("/api/marcar-portada", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ folderId, fileId: portadaId }),
+        });
+      }
+
+      if (subidos > 0) {
+        setMensaje(`✅ Subido${subidos > 1 ? "s" : ""}: ${subidos} archivo(s) a "${nombreViaje}".`);
         setNombreViaje("");
         setArchivos(null);
         setPortada("");
         e.target.reset();
       } else {
-        setMensaje("⚠️ Error al subir. Inténtalo de nuevo.");
+        setMensaje("⚠️ No se pudo subir ningún archivo. Inténtalo de nuevo.");
       }
-    } catch {
+    } catch (err) {
       setMensaje("⚠️ Error de conexión. Inténtalo de nuevo.");
     }
 
+    setProgreso("");
     setSubiendo(false);
   };
 
@@ -162,7 +217,7 @@ export default function Subir() {
               disabled={subiendo}
               className="bg-neutral-800 text-white rounded-full px-4 py-3 font-medium hover:bg-neutral-700 hover:scale-[1.02] transition-all disabled:opacity-50 disabled:hover:scale-100 shadow-md mt-2"
             >
-              {subiendo ? "Subiendo…" : "Subir"}
+              {subiendo ? (progreso || "Subiendo…") : "Subir"}
             </button>
           </form>
 
