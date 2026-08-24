@@ -1,5 +1,6 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/authOptions";
+import { getUsuarios } from "@/lib/usuarios";
 import {
   buscarOCrearCarpeta,
   subirArchivo,
@@ -9,14 +10,21 @@ import {
 export async function POST(req) {
   const session = await getServerSession(authOptions);
 
-  if (!session?.accessToken) {
+  if (!session?.accessToken || !session?.user?.email) {
     return Response.json({ error: "No autenticado" }, { status: 401 });
+  }
+
+  const usuarios = getUsuarios();
+  const rootDestino = usuarios[session.user.email.toLowerCase()];
+
+  if (!rootDestino) {
+    return Response.json({ error: "Usuario no configurado" }, { status: 403 });
   }
 
   const formData = await req.formData();
   const nombreViaje = formData.get("nombreViaje");
   const archivos = formData.getAll("archivos");
-  const portadaNombre = formData.get("portadaNombre"); // puede venir vacío
+  const portadaNombre = formData.get("portadaNombre");
 
   if (!nombreViaje || archivos.length === 0) {
     return Response.json({ error: "Faltan datos" }, { status: 400 });
@@ -24,7 +32,7 @@ export async function POST(req) {
 
   const folderId = await buscarOCrearCarpeta(
     nombreViaje,
-    process.env.ROOT_FOLDER_ID,
+    rootDestino,
     session.accessToken
   );
 

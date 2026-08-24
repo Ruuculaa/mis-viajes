@@ -1,8 +1,28 @@
 import Link from "next/link";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/authOptions";
 import { getViajes, getFotos } from "@/lib/drive";
 import TarjetaViaje from "@/components/TarjetaViaje";
 
 export default async function Home() {
+  const session = await getServerSession(authOptions);
+
+  // Solo mostramos el listado completo si eres tú (el propietario), aunque otra
+  // persona (como Miriam) también tenga sesión iniciada para poder subir sus fotos.
+  const esPropietario =
+    session?.user?.email?.toLowerCase() === process.env.OWNER_EMAIL?.toLowerCase();
+
+  if (!esPropietario) {
+    return (
+      <main className="min-h-screen bg-gradient-to-br from-orange-50 via-amber-50 to-sky-100 flex flex-col items-center justify-center px-4 text-center">
+        <p className="text-5xl mb-4">📷</p>
+        <p className="text-neutral-500 max-w-xs">
+          Usa tu recuerdo NFC para ver las fotos de tu viaje.
+        </p>
+      </main>
+    );
+  }
+
   const viajes = await getViajes();
 
   const viajesConPortada = await Promise.all(
