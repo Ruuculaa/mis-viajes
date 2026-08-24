@@ -7,6 +7,8 @@ import {
   marcarComoPortada,
 } from "@/lib/driveWrite";
 
+export const maxDuration = 60; // segundos - máximo permitido en el plan gratuito de Vercel
+
 export async function POST(req) {
   const session = await getServerSession(authOptions);
 
