@@ -18,7 +18,10 @@ export async function POST(req) {
   const rootDestino = usuarios[session.user.email.toLowerCase()];
 
   if (!rootDestino) {
-    return Response.json({ error: "Usuario no configurado" }, { status: 403 });
+    return Response.json(
+      { error: `Tu email (${session.user.email}) no está en la variable USUARIOS` },
+      { status: 403 }
+    );
   }
 
   const formData = await req.formData();
@@ -36,10 +39,22 @@ export async function POST(req) {
     session.accessToken
   );
 
+  if (!folderId) {
+    return Response.json(
+      { error: `No se pudo crear/encontrar la carpeta en ${rootDestino}. Revisa que ese ID de carpeta exista y sea tuyo.` },
+      { status: 500 }
+    );
+  }
+
   let portadaId = null;
+  const errores = [];
 
   for (const archivo of archivos) {
     const subido = await subirArchivo(archivo, folderId, session.accessToken);
+    if (!subido?.id) {
+      errores.push({ archivo: archivo.name, detalle: subido?.error?.message || "fallo desconocido" });
+      continue;
+    }
     if (portadaNombre && archivo.name === portadaNombre) {
       portadaId = subido.id;
     }
@@ -49,5 +64,12 @@ export async function POST(req) {
     await marcarComoPortada(folderId, portadaId, session.accessToken);
   }
 
-  return Response.json({ ok: true });
+  if (errores.length > 0) {
+    return Response.json(
+      { ok: errores.length < archivos.length, errores, folderId },
+      { status: errores.length === archivos.length ? 500 : 207 }
+    );
+  }
+
+  return Response.json({ ok: true, folderId });
 }
