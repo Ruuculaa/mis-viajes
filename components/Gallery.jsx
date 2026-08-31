@@ -31,7 +31,7 @@ export default function Gallery({ titulo, fotos: fotosIniciales, folderId, puede
     if (data.ok) {
       setFotos((prev) => prev.filter((f) => f.id !== fotoId));
     } else {
-      setAviso(data.error || "No se pudo ocultar la foto.");
+      setAviso(data.error || "No se pudo mover la foto a la papelera.");
     }
   };
 
@@ -124,10 +124,10 @@ export default function Gallery({ titulo, fotos: fotosIniciales, folderId, puede
           >
             <p className="text-3xl mb-3">🗑️</p>
             <p className="font-semibold text-neutral-800 mb-1">
-              ¿Ocultar esta foto?
+              ¿Mover esta foto a la papelera?
             </p>
             <p className="text-sm text-neutral-500 mb-6">
-              No se borra de Google Drive, solo desaparece de esta galería.
+              Se moverá a una carpeta "Papelera" dentro de este mismo álbum en Drive. No se borra.
             </p>
             <div className="flex gap-3">
               <button
@@ -142,7 +142,7 @@ export default function Gallery({ titulo, fotos: fotosIniciales, folderId, puede
                 disabled={ocultando}
                 className="flex-1 py-2.5 rounded-full bg-rose-500 text-white font-medium hover:bg-rose-600 transition-colors disabled:opacity-50"
               >
-                {ocultando ? "Ocultando…" : "Ocultar"}
+                {ocultando ? "Moviendo…" : "Mover"}
               </button>
             </div>
           </div>

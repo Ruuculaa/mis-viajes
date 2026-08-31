@@ -1,11 +1,10 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/authOptions";
-import { actualizarPapelera } from "@/lib/driveWrite";
-import { leerPapelera } from "@/lib/papelera";
+import { moverAPapelera } from "@/lib/driveWrite";
 
-// Oculta UNA foto dentro de su propia carpeta de viaje. No borra nada de Drive.
-// Google Drive ya se encarga de rechazar esto si la persona no tiene permiso
-// real de escritura en esa carpeta (no hace falta comprobarlo nosotros).
+// Mueve UNA foto a la subcarpeta "Papelera" dentro de su propio álbum.
+// Es un movimiento real en Drive: sigue existiendo, solo cambia de carpeta.
+// Google rechaza esto solo si la persona no tiene permiso real de escritura ahí.
 export async function POST(req) {
   const session = await getServerSession(authOptions);
 
@@ -19,15 +18,10 @@ export async function POST(req) {
   }
 
   try {
-    const actual = await leerPapelera(folderId);
-    const ocultos = Array.from(new Set([...(actual.ocultos || []), fotoId]));
-    const contador = (actual.contador || 0) + 1;
-
-    await actualizarPapelera(folderId, { ocultos, contador }, session.accessToken);
-
+    await moverAPapelera(fotoId, folderId, session.accessToken);
     return Response.json({ ok: true });
   } catch (err) {
-    console.error("Error ocultando foto:", err);
-    return Response.json({ error: err.message || "No se pudo ocultar la foto" }, { status: 500 });
+    console.error("Error moviendo foto a papelera:", err);
+    return Response.json({ error: err.message || "No se pudo mover la foto" }, { status: 500 });
   }
 }
