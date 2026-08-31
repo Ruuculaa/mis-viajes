@@ -3,6 +3,7 @@ import { useState, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useSession, signIn, signOut } from "next-auth/react";
+import { slugify } from "@/lib/slug";
 
 function SubirContenido() {
   const { data: session, status } = useSession();
@@ -16,6 +17,7 @@ function SubirContenido() {
   const [subiendo, setSubiendo] = useState(false);
   const [progreso, setProgreso] = useState("");
   const [mensaje, setMensaje] = useState("");
+  const [volverA, setVolverA] = useState(null); // { slug, nombre } tras subir con éxito
 
   if (status === "loading") return null;
 
@@ -106,8 +108,19 @@ function SubirContenido() {
         });
       }
 
+      const nombreFinal = nombreExistente || nombreViaje;
+      const slugFinal = slugify(nombreFinal);
+
       if (subidos > 0) {
-        setMensaje(`✅ Subido${subidos > 1 ? "s" : ""}: ${subidos} archivo(s) a "${nombreViaje}".`);
+        // Le decimos al servidor que refresque la caché de este álbum y de la home
+        await fetch("/api/finalizar-subida", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ slug: slugFinal }),
+        });
+
+        setMensaje(`✅ Subido${subidos > 1 ? "s" : ""}: ${subidos} archivo(s) a "${nombreFinal}".`);
+        setVolverA({ slug: slugFinal, nombre: nombreFinal });
         if (!carpetaExistente) setNombreViaje("");
         setArchivos(null);
         setPortada("");
@@ -129,10 +142,10 @@ function SubirContenido() {
     <main className="min-h-screen bg-gradient-to-br from-orange-50 via-amber-50 to-sky-100 px-4 py-14">
       <div className="max-w-md mx-auto">
         <Link
-          href="/"
+          href={carpetaExistente ? `/${slugify(nombreExistente || "")}` : "/"}
           className="inline-block text-sm text-neutral-500 hover:text-neutral-700 mb-4"
         >
-          ← Volver al inicio
+          ← {carpetaExistente ? `Volver a ${nombreExistente}` : "Volver al inicio"}
         </Link>
 
         <div className="flex justify-between items-center mb-8">
@@ -234,12 +247,12 @@ function SubirContenido() {
           {mensaje && (
             <div className="mt-4 text-center">
               <p className="text-sm text-neutral-600">{mensaje}</p>
-              {mensaje.startsWith("✅") && (
+              {mensaje.startsWith("✅") && volverA && (
                 <Link
-                  href="/"
+                  href={`/${volverA.slug}`}
                   className="inline-block mt-3 text-sm text-white bg-neutral-800 px-5 py-2 rounded-full hover:bg-neutral-700 transition-colors"
                 >
-                  Volver al inicio
+                  Volver a {volverA.nombre}
                 </Link>
               )}
             </div>
