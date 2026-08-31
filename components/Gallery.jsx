@@ -2,8 +2,30 @@
 import { useState } from "react";
 import Link from "next/link";
 
-export default function Gallery({ titulo, fotos, folderId, puedeSubir }) {
+export default function Gallery({ titulo, fotos: fotosIniciales, folderId, puedeSubir }) {
   const [abierto, setAbierto] = useState(null);
+  const [fotos, setFotos] = useState(fotosIniciales);
+
+  const handleOcultar = async (e, fotoId) => {
+    e.stopPropagation();
+    const confirmado = confirm(
+      "¿Ocultar esta foto de la galería?\n\nNo se borra de Google Drive, solo desaparece de aquí."
+    );
+    if (!confirmado) return;
+
+    const res = await fetch("/api/eliminar-foto", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ folderId, fotoId }),
+    });
+    const data = await res.json();
+
+    if (data.ok) {
+      setFotos((prev) => prev.filter((f) => f.id !== fotoId));
+    } else {
+      alert(data.error || "No se pudo ocultar la foto.");
+    }
+  };
 
   return (
     <main className="min-h-screen bg-gradient-to-br from-orange-50 via-amber-50 to-sky-100 px-4 py-12">
@@ -31,6 +53,15 @@ export default function Gallery({ titulo, fotos, folderId, puedeSubir }) {
               onClick={() => setAbierto(item)}
               className="relative aspect-square overflow-hidden rounded-xl shadow-md hover:shadow-xl hover:-translate-y-1 transition-all duration-300 bg-white p-1"
             >
+              {puedeSubir && (
+                <button
+                  onClick={(e) => handleOcultar(e, item.id)}
+                  title="Ocultar foto (no borra de Drive)"
+                  className="absolute top-1.5 right-1.5 w-6 h-6 bg-white/90 rounded-full shadow flex items-center justify-center text-neutral-500 hover:text-rose-500 hover:scale-110 transition-all z-10 text-xs"
+                >
+                  ✕
+                </button>
+              )}
               <div className="relative w-full h-full overflow-hidden rounded-lg">
                 <img
                   src={item.thumb}
