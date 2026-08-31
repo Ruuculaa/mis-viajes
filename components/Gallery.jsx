@@ -5,13 +5,18 @@ import Link from "next/link";
 export default function Gallery({ titulo, fotos: fotosIniciales, folderId, puedeSubir }) {
   const [abierto, setAbierto] = useState(null);
   const [fotos, setFotos] = useState(fotosIniciales);
+  const [confirmando, setConfirmando] = useState(null); // id de la foto pendiente de confirmar
+  const [ocultando, setOcultando] = useState(false);
+  const [aviso, setAviso] = useState("");
 
-  const handleOcultar = async (e, fotoId) => {
+  const pedirConfirmacion = (e, fotoId) => {
     e.stopPropagation();
-    const confirmado = confirm(
-      "¿Ocultar esta foto de la galería?\n\nNo se borra de Google Drive, solo desaparece de aquí."
-    );
-    if (!confirmado) return;
+    setConfirmando(fotoId);
+  };
+
+  const confirmarOcultar = async () => {
+    const fotoId = confirmando;
+    setOcultando(true);
 
     const res = await fetch("/api/eliminar-foto", {
       method: "POST",
@@ -20,10 +25,13 @@ export default function Gallery({ titulo, fotos: fotosIniciales, folderId, puede
     });
     const data = await res.json();
 
+    setOcultando(false);
+    setConfirmando(null);
+
     if (data.ok) {
       setFotos((prev) => prev.filter((f) => f.id !== fotoId));
     } else {
-      alert(data.error || "No se pudo ocultar la foto.");
+      setAviso(data.error || "No se pudo ocultar la foto.");
     }
   };
 
@@ -55,7 +63,7 @@ export default function Gallery({ titulo, fotos: fotosIniciales, folderId, puede
             >
               {puedeSubir && (
                 <button
-                  onClick={(e) => handleOcultar(e, item.id)}
+                  onClick={(e) => pedirConfirmacion(e, item.id)}
                   title="Ocultar foto (no borra de Drive)"
                   className="absolute top-1.5 right-1.5 w-6 h-6 bg-white/90 rounded-full shadow flex items-center justify-center text-neutral-500 hover:text-rose-500 hover:scale-110 transition-all z-10 text-xs"
                 >
@@ -101,6 +109,65 @@ export default function Gallery({ titulo, fotos: fotosIniciales, folderId, puede
               className="max-h-full max-w-full rounded-lg object-contain"
             />
           )}
+        </div>
+      )}
+
+      {/* Modal de confirmación para ocultar una foto */}
+      {confirmando && (
+        <div
+          className="fixed inset-0 bg-black/40 flex items-center justify-center z-[60] p-4"
+          onClick={() => !ocultando && setConfirmando(null)}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 text-center"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <p className="text-3xl mb-3">🗑️</p>
+            <p className="font-semibold text-neutral-800 mb-1">
+              ¿Ocultar esta foto?
+            </p>
+            <p className="text-sm text-neutral-500 mb-6">
+              No se borra de Google Drive, solo desaparece de esta galería.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setConfirmando(null)}
+                disabled={ocultando}
+                className="flex-1 py-2.5 rounded-full border border-neutral-200 text-neutral-600 font-medium hover:bg-neutral-50 transition-colors disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={confirmarOcultar}
+                disabled={ocultando}
+                className="flex-1 py-2.5 rounded-full bg-rose-500 text-white font-medium hover:bg-rose-600 transition-colors disabled:opacity-50"
+              >
+                {ocultando ? "Ocultando…" : "Ocultar"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de aviso, sustituye a alert() */}
+      {aviso && (
+        <div
+          className="fixed inset-0 bg-black/40 flex items-center justify-center z-[60] p-4"
+          onClick={() => setAviso("")}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 text-center"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <p className="text-3xl mb-3">⚠️</p>
+            <p className="text-sm text-neutral-600 mb-6">{aviso}</p>
+            <button
+              onClick={() => setAviso("")}
+              className="w-full py-2.5 rounded-full bg-neutral-800 text-white font-medium hover:bg-neutral-700 transition-colors"
+            >
+              Entendido
+            </button>
+          </div>
         </div>
       )}
     </main>

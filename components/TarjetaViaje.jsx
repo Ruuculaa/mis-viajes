@@ -6,15 +6,12 @@ export default function TarjetaViaje({ viaje, index }) {
   const { data: session } = useSession();
   const [eliminando, setEliminando] = useState(false);
   const [oculta, setOculta] = useState(false);
+  const [confirmando, setConfirmando] = useState(false);
+  const [aviso, setAviso] = useState("");
 
   if (oculta) return null;
 
-  const handleEliminar = async () => {
-    const confirmado = confirm(
-      `¿Ocultar "${viaje.nombre}" de esta lista?\n\nNo se borra nada de Google Drive, solo desaparece de aquí. Podrás recuperarlo manualmente si hace falta.`
-    );
-    if (!confirmado) return;
-
+  const confirmarEliminar = async () => {
     setEliminando(true);
     try {
       const res = await fetch("/api/eliminar", {
@@ -24,12 +21,14 @@ export default function TarjetaViaje({ viaje, index }) {
       });
       const data = await res.json();
 
+      setConfirmando(false);
+
       if (data.ok) {
         setOculta(true);
         if (data.avisar) {
           setTimeout(() => {
-            alert(
-              `Llevas ${data.contador} viajes ocultados 🗑️\n\nRecuerda que las fotos siguen ocupando espacio en tu Google Drive. Cuando puedas, entra en Drive y limpia manualmente las carpetas que ya no quieras conservar.`
+            setAviso(
+              `Llevas ${data.contador} viajes ocultados 🗑️ Recuerda que las fotos siguen ocupando espacio en tu Google Drive. Cuando puedas, entra en Drive y limpia manualmente las carpetas que ya no quieras conservar.`
             );
           }, 300);
         }
@@ -47,7 +46,7 @@ export default function TarjetaViaje({ viaje, index }) {
     >
       {session && (
         <button
-          onClick={handleEliminar}
+          onClick={() => setConfirmando(true)}
           disabled={eliminando}
           title="Ocultar viaje (no borra de Drive)"
           className="absolute -top-3 -right-3 w-8 h-8 bg-white rounded-full shadow-md flex items-center justify-center text-neutral-400 hover:text-rose-500 hover:scale-110 transition-all z-10 text-sm"
@@ -58,11 +57,7 @@ export default function TarjetaViaje({ viaje, index }) {
 
       <div className="aspect-square overflow-hidden rounded bg-gradient-to-br from-amber-100 to-rose-100">
         {viaje.portada ? (
-          <img
-            src={viaje.portada}
-            alt=""
-            className="w-full h-full object-cover"
-          />
+          <img src={viaje.portada} alt="" className="w-full h-full object-cover" />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-4xl opacity-40">
             📷
@@ -80,6 +75,65 @@ export default function TarjetaViaje({ viaje, index }) {
         <p className="text-center text-[11px] text-sky-500 mt-1 font-mono">
           /{viaje.slug}
         </p>
+      )}
+
+      {/* Modal de confirmación propio, sustituye a confirm() */}
+      {confirmando && (
+        <div
+          className="fixed inset-0 bg-black/40 flex items-center justify-center z-[60] p-4"
+          onClick={() => !eliminando && setConfirmando(false)}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 text-center"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <p className="text-3xl mb-3">🗑️</p>
+            <p className="font-semibold text-neutral-800 mb-1">
+              ¿Ocultar "{viaje.nombre}"?
+            </p>
+            <p className="text-sm text-neutral-500 mb-6">
+              No se borra nada de Google Drive, solo desaparece de esta lista.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setConfirmando(false)}
+                disabled={eliminando}
+                className="flex-1 py-2.5 rounded-full border border-neutral-200 text-neutral-600 font-medium hover:bg-neutral-50 transition-colors disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={confirmarEliminar}
+                disabled={eliminando}
+                className="flex-1 py-2.5 rounded-full bg-rose-500 text-white font-medium hover:bg-rose-600 transition-colors disabled:opacity-50"
+              >
+                {eliminando ? "Ocultando…" : "Ocultar"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de aviso, sustituye a alert() */}
+      {aviso && (
+        <div
+          className="fixed inset-0 bg-black/40 flex items-center justify-center z-[60] p-4"
+          onClick={() => setAviso("")}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 text-center"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <p className="text-3xl mb-3">📦</p>
+            <p className="text-sm text-neutral-600 mb-6">{aviso}</p>
+            <button
+              onClick={() => setAviso("")}
+              className="w-full py-2.5 rounded-full bg-neutral-800 text-white font-medium hover:bg-neutral-700 transition-colors"
+            >
+              Entendido
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );
