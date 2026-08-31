@@ -1,11 +1,16 @@
 "use client";
-import { useState } from "react";
+import { useState, Suspense } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useSession, signIn, signOut } from "next-auth/react";
 
-export default function Subir() {
+function SubirContenido() {
   const { data: session, status } = useSession();
-  const [nombreViaje, setNombreViaje] = useState("");
+  const searchParams = useSearchParams();
+  const carpetaExistente = searchParams.get("carpeta"); // folderId, si venimos de "Añadir fotos"
+  const nombreExistente = searchParams.get("nombre");
+
+  const [nombreViaje, setNombreViaje] = useState(nombreExistente || "");
   const [archivos, setArchivos] = useState(null);
   const [portada, setPortada] = useState("");
   const [subiendo, setSubiendo] = useState(false);
@@ -37,25 +42,29 @@ export default function Subir() {
 
     setSubiendo(true);
     setMensaje("");
-    setProgreso("Preparando carpeta…");
 
     try {
-      // 1. Crear/encontrar la carpeta del viaje (payload pequeño)
-      const prepRes = await fetch("/api/preparar-subida", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ nombreViaje }),
-      });
-      const prepData = await prepRes.json();
+      let folderId = carpetaExistente;
 
-      if (!prepData.folderId) {
-        setMensaje(`⚠️ ${prepData.error || "No se pudo preparar la subida."}`);
-        setSubiendo(false);
-        setProgreso("");
-        return;
+      // Si NO venimos de "Añadir fotos", hay que crear/encontrar la carpeta primero
+      if (!folderId) {
+        setProgreso("Preparando carpeta…");
+        const prepRes = await fetch("/api/preparar-subida", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ nombreViaje }),
+        });
+        const prepData = await prepRes.json();
+
+        if (!prepData.folderId) {
+          setMensaje(`⚠️ ${prepData.error || "No se pudo preparar la subida."}`);
+          setSubiendo(false);
+          setProgreso("");
+          return;
+        }
+        folderId = prepData.folderId;
       }
 
-      const folderId = prepData.folderId;
       const listaArchivos = Array.from(archivos);
       let portadaId = null;
       let subidos = 0;
@@ -64,7 +73,6 @@ export default function Subir() {
         const archivo = listaArchivos[i];
         setProgreso(`Subiendo ${i + 1} de ${listaArchivos.length}…`);
 
-        // 2. Pedir a Google la URL de subida para ESTE archivo
         const initRes = await fetch("/api/iniciar-subida", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -77,7 +85,6 @@ export default function Subir() {
         const initData = await initRes.json();
         if (!initData.uploadUrl) continue;
 
-        // 3. Subir el archivo DIRECTAMENTE a Google, sin pasar por nuestro servidor
         const subidaRes = await fetch(initData.uploadUrl, {
           method: "PUT",
           headers: { "Content-Type": archivo.type || "application/octet-stream" },
@@ -91,7 +98,6 @@ export default function Subir() {
         }
       }
 
-      // 4. Marcar portada si se eligió
       if (portadaId) {
         await fetch("/api/marcar-portada", {
           method: "POST",
@@ -102,7 +108,7 @@ export default function Subir() {
 
       if (subidos > 0) {
         setMensaje(`✅ Subido${subidos > 1 ? "s" : ""}: ${subidos} archivo(s) a "${nombreViaje}".`);
-        setNombreViaje("");
+        if (!carpetaExistente) setNombreViaje("");
         setArchivos(null);
         setPortada("");
         e.target.reset();
@@ -143,25 +149,29 @@ export default function Subir() {
 
         <div className="bg-white rounded-2xl shadow-[0_10px_30px_-10px_rgba(0,0,0,0.15)] p-6">
           <h1 className="text-2xl font-black text-center text-neutral-800 mb-1">
-            Subir recuerdos
+            {carpetaExistente ? "Añadir recuerdos" : "Subir recuerdos"}
           </h1>
           <p className="text-center text-neutral-400 text-sm mb-6">
-            Fotos y vídeos de tu próximo viaje ✈️
+            {carpetaExistente
+              ? `Nuevas fotos para "${nombreExistente}"`
+              : "Fotos y vídeos de tu próximo viaje ✈️"}
           </p>
 
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-            <div>
-              <label className="text-xs font-medium text-neutral-500 mb-1 block">
-                Nombre del viaje
-              </label>
-              <input
-                type="text"
-                placeholder="Ej: Nantes 2026 🇫🇷"
-                value={nombreViaje}
-                onChange={(e) => setNombreViaje(e.target.value)}
-                className="w-full bg-orange-50 rounded-xl px-4 py-3 outline-none border border-transparent focus:border-orange-300 transition-colors"
-              />
-            </div>
+            {!carpetaExistente && (
+              <div>
+                <label className="text-xs font-medium text-neutral-500 mb-1 block">
+                  Nombre del viaje
+                </label>
+                <input
+                  type="text"
+                  placeholder="Ej: Nantes 2026 🇫🇷"
+                  value={nombreViaje}
+                  onChange={(e) => setNombreViaje(e.target.value)}
+                  className="w-full bg-orange-50 rounded-xl px-4 py-3 outline-none border border-transparent focus:border-orange-300 transition-colors"
+                />
+              </div>
+            )}
 
             <div>
               <label className="text-xs font-medium text-neutral-500 mb-1 block">
@@ -192,7 +202,7 @@ export default function Subir() {
                       checked={portada === ""}
                       onChange={() => setPortada("")}
                     />
-                    Automática (la primera que se procese)
+                    No cambiar portada
                   </label>
                   {listaArchivos.map((archivo) => (
                     <label
@@ -237,5 +247,13 @@ export default function Subir() {
         </div>
       </div>
     </main>
+  );
+}
+
+export default function Subir() {
+  return (
+    <Suspense fallback={null}>
+      <SubirContenido />
+    </Suspense>
   );
 }
